@@ -221,8 +221,6 @@ let mouthOpen  = false;
 /* ===================== 3) INIT UI ===================== */
 document.getElementById('title').textContent = DATA.titre;
 document.getElementById('price').textContent = DATA.prix.toLocaleString('fr-FR') + " €";
-document.getElementById('hs1').textContent = DATA.hotspots[0] || "";
-document.getElementById('hs2').textContent = DATA.hotspots[1] || "";
 
 // tabs (manuels, utiles pour tester sans Matterport)
 document.querySelectorAll('.tab').forEach(btn=>{
