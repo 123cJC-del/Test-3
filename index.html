@@ -23,6 +23,7 @@
 
   /* Viewer */
   .viewer{position:relative;min-height:750px;background:#e6ecf3}
+  /* (hotspot CSS laissé si besoin futur, mais plus utilisé) */
   .hotspot{position:absolute;padding:6px 10px;border-radius:999px;background:var(--chip);color:#374151;font-size:13px;
            display:flex;align-items:center;gap:6px;border:1px solid var(--line);box-shadow:0 1px 0 rgba(0,0,0,.03)}
   .hotspot i{width:18px;height:18px;border-radius:999px;background:#dbeafe;display:inline-block}
@@ -106,7 +107,7 @@
             style="position:absolute; inset:0; width:100%; height:100%; border:0;"
           ></iframe>
 
-          <!-- Mini contrôles (tu peux les enlever si tu veux) -->
+          <!-- Mini contrôles -->
           <div class="controls pill">
             <div title="Son sur clic sur mobile">🎧</div>
             <div class="tabs">
@@ -123,7 +124,6 @@
 
           <!-- AVATAR (2 images, fermé/ouvert) -->
           <div class="avatar" id="avatar">
-            <!-- ⚠ fichiers à la racine du repo -->
             <img class="face face-closed" src="avatar-closed.png" alt="Assistant IA" />
             <img class="face face-open"   src="avatar-open.png"   alt="" />
           </div>
@@ -169,7 +169,7 @@
     </div>
   </div>
 
-  <!-- Lecteur audio commun (pour prochaines intégrations TTS/MP3) -->
+  <!-- Lecteur audio commun -->
   <audio id="narrAudio" preload="auto"></audio>
 
 <script>
@@ -177,7 +177,6 @@
 const DATA = {
   titre: "3P rénové – 72 m² – Nice",
   prix: 520000,
-  hotspots: ["Exposition Sud", "Baie vitrée"],
   charges_mensuelles: 150,
   dpe: "C",
   copro: "Aucune procédure connue",
@@ -204,7 +203,7 @@ const DATA = {
 /* ===================== 2) ÉTAT + RÈGLES ===================== */
 let activeRoom = "salon";
 let lastPlayedAt = {};                // { roomId: timestamp }
-const COOLDOWN_MS = 25000;            // éviter relance immédiate
+const COOLDOWN_MS = 12000;            // éviter relance immédiate
 let gateShown = false;                // affiché une fois
 
 const avatarEl   = document.getElementById('avatar');
@@ -285,7 +284,6 @@ function startMouthAnimation(){
     faceClosedEl.style.display = 'block';
     faceOpenEl.style.display   = 'none';
   }
-  // alterne toutes les ~120–200 ms (ajuste si tu veux)
   mouthTimer = setInterval(()=>{
     mouthOpen = !mouthOpen;
     if (faceClosedEl && faceOpenEl){
@@ -320,23 +318,38 @@ function speak(text){
     u.lang = 'fr-FR';
     u.onstart = startMouthAnimation;
     u.onend   = stopMouthAnimation;
-
-    // stoppe ce qui parlait avant
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
   }catch(e){}
 }
 
-// Lecture d'un MP3 (pour narrations pré-générées)
+// Lecture d'un MP3 (pour narrations pré-générées) + cache-bust
 function playRoomAudio(roomId){
   const src = DATA.rooms[roomId].audio;
   if (!src) return false;
-  narrAudio.src = src;
+  const withBust = src + (src.includes('?') ? '&' : '?') + 'v=' + Date.now();
+  narrAudio.src = withBust;
   narrAudio.currentTime = 0;
   const playPromise = narrAudio.play();
-  if (playPromise && playPromise.catch) playPromise.catch(()=>{ /* mobile: besoin 1er clic */ });
+  if (playPromise && playPromise.catch) playPromise.catch(()=>{ /* besoin 1er clic */ });
   return true;
 }
+
+// Déblocage audio après 1er clic dans la zone viewer (mobile/Safari)
+let audioUnlocked = false;
+document.getElementById('viewer').addEventListener('click', ()=>{
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  try {
+    narrAudio.muted = true;
+    const p = narrAudio.play();
+    if (p && p.finally) {
+      p.finally(()=>{ narrAudio.pause(); narrAudio.currentTime = 0; narrAudio.muted = false; });
+    } else {
+      narrAudio.pause(); narrAudio.currentTime = 0; narrAudio.muted = false;
+    }
+  } catch(e){}
+}, { once:true });
 
 // Entrée de pièce
 function enterRoom(roomId){
@@ -364,7 +377,6 @@ function onSend(){
   const q = input.value.trim();
   if(!q) return;
 
-  // Interrompt toute parole en cours + stop anim bouche
   try { narrAudio.pause(); } catch(e){}
   speechSynthesis.cancel();
   stopMouthAnimation();
@@ -373,7 +385,6 @@ function onSend(){
   const reply = answerFromData(q);
   appendMsg(reply, 'bot');
 
-  // voix
   speak(reply);
   input.value='';
 }
@@ -394,12 +405,11 @@ function answerFromData(q){
   const iframe = document.getElementById('mp');
   if (!iframe) return;
 
-  // IMPORTANT : init du mapping AVANT l'abonnement
+  // init mapping
   window.SWEEP_TO_ROOM = {};
 
   let mpSdk;
   try {
-    // 1) auto (sans version)
     mpSdk = await window.MP_SDK.connect(iframe);
     console.log("✅ SDK connecté (auto) !");
   } catch(e1){
@@ -422,23 +432,25 @@ function answerFromData(q){
     }
   }
 
-  // 1) TEMPORAIRE: log l'ID de chaque position (sweep) dans la console
+  // Log du sweep courant (pour futur mapping)
   mpSdk.Sweep.current.subscribe((sweepId) => {
     console.log("Sweep actuel:", sweepId);
     const room = window.SWEEP_TO_ROOM[sweepId];
     if (room) enterRoom(room);
   });
 
-  // 2) ➜ Après avoir noté les IDs dans la console, remplis :
-  // window.SWEEP_TO_ROOM = {
-  //   "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": "salon",
-  //   "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy": "cuisine",
-  //   "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz": "chambre",
-  // };
-
-  // 3) (Optionnel) forcer une première narration
+  // (Optionnel) lancer une première narration manuelle
   // enterRoom('salon');
 })();
+
+// Pause auto si l’onglet n’est plus visible
+document.addEventListener('visibilitychange', ()=>{
+  if (document.hidden){
+    try{ narrAudio.pause(); }catch(e){}
+    speechSynthesis.cancel();
+    stopMouthAnimation();
+  }
+});
 </script>
 </body>
 </html>
