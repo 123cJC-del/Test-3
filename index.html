@@ -33,11 +33,42 @@
   .tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
   .narrBar{position:absolute;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);padding:10px 16px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px}
   .narrText{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#111827}
-  /* Avatar */
-  .avatar{position:absolute;right:12px;bottom:12px;width:90px;height:90px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);box-shadow:0 6px 20px rgba(0,0,0,.08)}
-  .avatar svg{width:70px;height:70px}
-  .mouth{transform-origin:center;transition:transform .06s;transform:scaleY(0.2)}
-  .talking .mouth{transform:scaleY(1)}
+  /* Avatar avec images (fermée / ouverte) */
+.avatar {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 90px;
+  height: 90px;
+  border-radius: 16px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  box-shadow: 0 6px 20px rgba(0,0,0,.08);
+  overflow: hidden;
+}
+
+.face {
+  position: absolute;
+  width: 100%;
+  height: auto;
+  display: none;
+}
+
+.face-closed {
+  display: block;
+}
+
+.avatar.talking .face-closed {
+  display: none;
+}
+
+.avatar.talking .face-open {
+  display: block;
+}
+
 
   /* Side / Chat */
   .side{border-left:1px solid var(--line);background:#fafafa;display:flex;flex-direction:column;min-height:430px}
@@ -104,16 +135,13 @@
             <div id="narrText" class="narrText">—</div>
           </div>
 
-          <!-- AVATAR (smiley parlant; tu changeras plus tard par tes 2 images) -->
-          <div class="avatar" id="avatar">
-            <svg viewBox="0 0 120 120" aria-hidden="true">
-              <circle cx="60" cy="60" r="48" fill="#fff" stroke="#e5e7eb" stroke-width="3"/>
-              <circle cx="43" cy="52" r="6" fill="#111"/>
-              <circle cx="77" cy="52" r="6" fill="#111"/>
-              <rect class="mouth" x="42" y="74" width="36" height="8" rx="4" fill="#111"/>
-            </svg>
-          </div>
-        </div>
+       
+            <!-- AVATAR (2 images, fermé/ouvert) -->
+<div class="avatar" id="avatar">
+  <img class="face face-closed" src="img/avatar-closed.png" alt="Assistant IA" />
+  <img class="face face-open"   src="img/avatar-open.png"   alt="" />
+</div>
+
 
         <!-- ================== CHAT ================== -->
         <div class="side">
