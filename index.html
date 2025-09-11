@@ -215,6 +215,11 @@ const avatarEl   = document.getElementById('avatar');
 const narrTextEl = document.getElementById('narrText');
 const chatEl     = document.getElementById('chat');
 const narrAudio  = document.getElementById('narrAudio');
+// --- Animation de la bouche (clignotement) ---
+let mouthTimer = null;
+let mouthOpen  = false;
+const faceClosedEl = document.querySelector('.face-closed');
+const faceOpenEl   = document.querySelector('.face-open');
 
 /* ===================== 3) INIT UI ===================== */
 document.getElementById('title').textContent = DATA.titre;
@@ -279,17 +284,43 @@ function appendMsg(text, who='bot'){
   div.textContent = text;
   chatEl.appendChild(div);
   chatEl.scrollTop = chatEl.scrollHeight;
+// Petite fonction utilitaire pour afficher la bonne image
+function showFace(isOpen){
+  if (!faceClosedEl || !faceOpenEl) return;
+  faceClosedEl.style.display = isOpen ? 'none'  : 'block';
+  faceOpenEl.style.display   = isOpen ? 'block' : 'none';
 }
+
+// Lance l'animation (bouche qui s’ouvre/ferme)
 function startTalking(){
+  // si déjà en train d'animer, ne rien faire
+  if (mouthTimer) return;
+
   avatarEl.classList.add('talking');
-  clearTimeout(talkingTimer);
-  talkingTimer = setTimeout(stopTalking, 30000);
+
+  // on part bouche fermée
+  mouthOpen = false;
+  showFace(false);
+
+  // alterne toutes les ~160-220ms (tu peux ajuster)
+  mouthTimer = setInterval(()=>{
+    mouthOpen = !mouthOpen;
+    showFace(mouthOpen);
+  }, 180);
 }
+
+// Stoppe l'animation et remet bouche fermée
 function stopTalking(){
   avatarEl.classList.remove('talking');
-  clearTimeout(talkingTimer);
-  talkingTimer = null;
+
+  if (mouthTimer){
+    clearInterval(mouthTimer);
+    mouthTimer = null;
+  }
+  mouthOpen = false;
+  showFace(false);
 }
+
 
 // TTS navigateur (fallback)
 function speak(text){
