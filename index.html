@@ -138,7 +138,7 @@
             </div>
           </div>
 
-          <!-- BULLE DE PAROLE (nouveau) -->
+          <!-- BULLE DE PAROLE -->
           <div class="speech" id="speech" aria-live="polite" aria-atomic="true">
             <div id="narrText" class="narrText">—</div>
           </div>
@@ -201,6 +201,11 @@ const DATA = {
   dpe: "C",
   copro: "Aucune procédure connue",
   surface_totale: 72,
+
+  // >>> Intro automatique (texte + MP3)
+  introText: "Bonjour et bienvenue 👋 Pour profiter pleinement de la visite, activez le son 🎧, l’expérience sera bien plus vivante. Explorez les pièces avec les boutons, et posez-moi vos questions dans le chat. Je suis là pour vous aider 😊.",
+  introAudio: "intro.mp3",
+
   rooms: {
     salon: {
       titre: "Salon",
@@ -360,16 +365,45 @@ function speak(text){
 }
 
 // Lecture d'un MP3 (pré-généré) + cache-bust
-function playRoomAudio(roomId){
-  const src = DATA.rooms[roomId].audio;
+function playSrc(src){
   if (!src) return false;
   const withBust = src + (src.includes('?') ? '&' : '?') + 'v=' + Date.now();
   narrAudio.src = withBust;
   narrAudio.currentTime = 0;
-  const playPromise = narrAudio.play();
-  if (playPromise && playPromise.catch) playPromise.catch(()=>{ /* besoin 1er clic */ });
+  const p = narrAudio.play();
+  if (p && p.catch) p.catch(()=>{ /* autoplay peut être bloqué, on gère ailleurs */ });
   return true;
 }
+function playRoomAudio(roomId){
+  return playSrc(DATA.rooms[roomId]?.audio);
+}
+
+/* ===================== 4bis) INTRO AUTO (MP3 une seule fois) ===================== */
+function runIntroOnce(){
+  if (localStorage.getItem('intro_done')) return; // déjà fait
+  const text = DATA.introText || "";
+  if (!text) return;
+
+  // Affiche bulle + chat
+  narrTextEl.textContent = text;
+  showSpeech();
+  appendMsg(text, 'bot');
+
+  // Essaie de jouer le MP3 d'intro, sinon fallback TTS
+  const tried = playSrc(DATA.introAudio || "");
+  // Si le navigateur bloque l'autoplay, on lance un TTS de secours après 1s
+  setTimeout(()=>{
+    if (narrAudio.paused) {
+      speak(text);
+    }
+  }, 1000);
+
+  // Marque comme fait pour ne pas répéter à chaque reload
+  localStorage.setItem('intro_done', '1');
+}
+
+// Déclenche l’intro 2s après le chargement (laisse le temps à l’UI)
+window.addEventListener('load', ()=> setTimeout(runIntroOnce, 2000));
 
 // Déblocage audio après 1er clic dans la zone viewer (mobile/Safari)
 let audioUnlocked = false;
@@ -387,7 +421,7 @@ document.getElementById('viewer').addEventListener('click', ()=>{
   } catch(e){}
 }, { once:true });
 
-// Entrée de pièce
+/* ===================== 5) ENTRÉE DE PIÈCE + CHAT ===================== */
 function enterRoom(roomId){
   if(!DATA.rooms[roomId]) return;
   const now = Date.now();
@@ -396,7 +430,7 @@ function enterRoom(roomId){
 
   const text = DATA.rooms[roomId].narration;
   narrTextEl.textContent = text;
-  showSpeech(); // on affiche la bulle tout de suite
+  showSpeech(); // affiche la bulle tout de suite
   appendMsg(text, 'bot');
 
   // D'abord MP3 s'il existe, sinon TTS
@@ -426,7 +460,7 @@ function onSend(){
   const reply = answerFromData(q);
   appendMsg(reply, 'bot');
 
-  // on fait parler l'assistant (bulle + voix)
+  // parle (bulle + voix)
   narrTextEl.textContent = reply;
   showSpeech();
   speak(reply);
@@ -444,7 +478,7 @@ function answerFromData(q){
   return `Information non disponible ici. Je peux demander à un conseiller de vous rappeler si vous voulez.`;
 }
 
-/* ===================== 5) MATTERPORT : connexion & mapping ===================== */
+/* ===================== 6) MATTERPORT : connexion & mapping ===================== */
 (async function connectMatterport(){
   const iframe = document.getElementById('mp');
   if (!iframe) return;
