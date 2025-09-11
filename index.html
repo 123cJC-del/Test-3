@@ -210,17 +210,18 @@ let activeRoom = "salon";
 let lastPlayedAt = {};                // { roomId: timestamp }
 const COOLDOWN_MS = 25000;            // éviter relance immédiate
 let gateShown = false;                // affiché une fois
-let talkingTimer = null;              // animation bouche
+
 const avatarEl   = document.getElementById('avatar');
 const narrTextEl = document.getElementById('narrText');
 const chatEl     = document.getElementById('chat');
 const narrAudio  = document.getElementById('narrAudio');
-  // === Avatar: éléments & état (sécurisés)
+
+// === Avatar: éléments & état
 const faceClosedEl = document.querySelector('.face.face-closed');
 const faceOpenEl   = document.querySelector('.face.face-open');
-
 let mouthTimer = null;
 let mouthOpen  = false;
+
 /* ===================== 3) INIT UI ===================== */
 document.getElementById('title').textContent = DATA.titre;
 document.getElementById('price').textContent = DATA.prix.toLocaleString('fr-FR') + " €";
@@ -265,12 +266,7 @@ gateGo.addEventListener('click', ()=>{
   appendMsg("Merci ! Tu peux continuer la visite et poser tes questions. (Nous t'enverrons le récap par email.)", 'bot');
 });
 
-// audio events pour animer la bouche
-narrAudio.onplay  = () => startTalking();
-narrAudio.onended = () => stopTalking();
-narrAudio.onpause = () => stopTalking();
-
-/* ===================== 4) FONCTIONS UI ===================== */
+/* ===================== 4) FONCTIONS UI + ANIM BOUCHE ===================== */
 function validateGate(){
   const ok = document.getElementById('leadEmail').value.includes('@')
           && document.getElementById('consent').checked;
@@ -284,51 +280,54 @@ function appendMsg(text, who='bot'){
   div.textContent = text;
   chatEl.appendChild(div);
   chatEl.scrollTop = chatEl.scrollHeight;
-// Petite fonction utilitaire pour afficher la bonne image
-function showFace(isOpen){
-  if (!faceClosedEl || !faceOpenEl) return;
-  faceClosedEl.style.display = isOpen ? 'none'  : 'block';
-  faceOpenEl.style.display   = isOpen ? 'block' : 'none';
 }
 
-// Lance l'animation (bouche qui s’ouvre/ferme)
-function startTalking(){
-  // si déjà en train d'animer, ne rien faire
-  if (mouthTimer) return;
-
-  avatarEl.classList.add('talking');
-
-  // on part bouche fermée
+// --- Animation bouche (images fermée / ouverte) ---
+function startMouthAnimation(){
+  if (mouthTimer) clearInterval(mouthTimer);
   mouthOpen = false;
-  showFace(false);
-
-  // alterne toutes les ~160-220ms (tu peux ajuster)
+  if (avatarEl) avatarEl.classList.add('talking');
+  if (faceClosedEl && faceOpenEl){
+    faceClosedEl.style.display = 'block';
+    faceOpenEl.style.display   = 'none';
+  }
+  // alterne toutes les ~120–200 ms (ajuste si tu veux)
   mouthTimer = setInterval(()=>{
     mouthOpen = !mouthOpen;
-    showFace(mouthOpen);
+    if (faceClosedEl && faceOpenEl){
+      faceClosedEl.style.display = mouthOpen ? 'none'  : 'block';
+      faceOpenEl.style.display   = mouthOpen ? 'block' : 'none';
+    }
   }, 180);
 }
 
-// Stoppe l'animation et remet bouche fermée
-function stopTalking(){
-  avatarEl.classList.remove('talking');
-
+function stopMouthAnimation(){
+  if (avatarEl) avatarEl.classList.remove('talking');
   if (mouthTimer){
     clearInterval(mouthTimer);
     mouthTimer = null;
   }
   mouthOpen = false;
-  showFace(false);
+  if (faceClosedEl && faceOpenEl){
+    faceClosedEl.style.display = 'block';
+    faceOpenEl.style.display   = 'none';
+  }
 }
 
+// Branchements audio (MP3)
+narrAudio.onplay  = startMouthAnimation;
+narrAudio.onended = stopMouthAnimation;
+narrAudio.onpause = stopMouthAnimation;
 
 // TTS navigateur (fallback)
 function speak(text){
   try{
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'fr-FR';
-    u.onstart = startTalking;
-    u.onend = stopTalking;
+    u.onstart = startMouthAnimation;
+    u.onend   = stopMouthAnimation;
+
+    // stoppe ce qui parlait avant
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
   }catch(e){}
@@ -356,6 +355,7 @@ function enterRoom(roomId){
   document.getElementById('narrText').textContent = text;
   appendMsg(text, 'bot');
 
+  // D'abord MP3 s'il existe, sinon TTS
   if (!playRoomAudio(roomId)) speak(text);
 
   lastPlayedAt[roomId] = now;
@@ -369,12 +369,17 @@ function onSend(){
   const input = document.getElementById('question');
   const q = input.value.trim();
   if(!q) return;
+
+  // Interrompt toute parole en cours + stop anim bouche
   try { narrAudio.pause(); } catch(e){}
-  speechSynthesis.cancel(); stopTalking();
+  speechSynthesis.cancel();
+  stopMouthAnimation();
 
   appendMsg(q, 'me');
   const reply = answerFromData(q);
   appendMsg(reply, 'bot');
+
+  // voix
   speak(reply);
   input.value='';
 }
