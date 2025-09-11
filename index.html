@@ -33,42 +33,32 @@
   .tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
   .narrBar{position:absolute;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);padding:10px 16px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px}
   .narrText{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#111827}
+
   /* Avatar avec images (fermée / ouverte) */
-.avatar {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  width: 90px;
-  height: 90px;
-  border-radius: 16px;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--line);
-  box-shadow: 0 6px 20px rgba(0,0,0,.08);
-  overflow: hidden;
-}
-
-.face {
-  position: absolute;
-  width: 100%;
-  height: auto;
-  display: none;
-}
-
-.face-closed {
-  display: block;
-}
-
-.avatar.talking .face-closed {
-  display: none;
-}
-
-.avatar.talking .face-open {
-  display: block;
-}
-
+  .avatar {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    width: 90px;
+    height: 90px;
+    border-radius: 16px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+    box-shadow: 0 6px 20px rgba(0,0,0,.08);
+    overflow: hidden;
+  }
+  .face{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    object-fit:contain;
+    display:none;
+  }
+  .face-closed{ display:block; }
+  .avatar.talking .face-closed{ display:none; }
+  .avatar.talking .face-open{ display:block; }
 
   /* Side / Chat */
   .side{border-left:1px solid var(--line);background:#fafafa;display:flex;flex-direction:column;min-height:430px}
@@ -135,13 +125,14 @@
             <div id="narrText" class="narrText">—</div>
           </div>
 
-       
-            <!-- AVATAR (2 images, fermé/ouvert) -->
-<div class="avatar" id="avatar">
-  <img class="face face-closed" src="img/avatar-closed.png" alt="Assistant IA" />
-  <img class="face face-open"   src="img/avatar-open.png"   alt="" />
-</div>
+          <!-- AVATAR (2 images, fermé/ouvert) -->
+          <div class="avatar" id="avatar">
+            <!-- ⚠ fichiers à la racine du repo -->
+            <img class="face face-closed" src="avatar-closed.png" alt="Assistant IA" />
+            <img class="face face-open"   src="avatar-open.png"   alt="" />
+          </div>
 
+        </div> <!-- 👈 FIN du .viewer -->
 
         <!-- ================== CHAT ================== -->
         <div class="side">
@@ -182,7 +173,7 @@
     </div>
   </div>
 
-  <!-- Lecteur audio commun (tu mettras plus tard tes MP3 ElevenLabs pour les pièces) -->
+  <!-- Lecteur audio commun (pour prochaines intégrations TTS/MP3) -->
   <audio id="narrAudio" preload="auto"></audio>
 
 <script>
@@ -195,22 +186,21 @@ const DATA = {
   dpe: "C",
   copro: "Aucune procédure connue",
   surface_totale: 72,
-  // Narrations "pièce" (texte + option audio pré-généré)
   rooms: {
     salon: {
       titre: "Salon",
       narration: "Bienvenue 👋 Ici, le salon de 22,5 m², exposé Sud. La baie vitrée de 3 m apporte une belle lumière toute la journée. Parquet rénové en 2023, clim pour le confort été/hiver. Je peux vous donner les charges ou le DPE.",
-      audio: "" // ex: "audio/salon.mp3" (plus tard)
+      audio: ""
     },
     cuisine: {
       titre: "Cuisine",
       narration: "Voici la cuisine semi-ouverte de 9,8 m², électroménager inclus et rangements. On reste connecté à la pièce de vie. Voulez-vous la liste des équipements ou le plan exact ?",
-      audio: "" // ex: "audio/cuisine.mp3"
+      audio: ""
     },
     chambre: {
       titre: "Chambre",
       narration: "La chambre principale fait 12,4 m², au calme sur cour, avec placard intégré. On peut envisager un coin bureau. Besoin d'infos sur l'isolation ou la copro ?",
-      audio: "" // ex: "audio/chambre.mp3"
+      audio: ""
     }
   }
 };
@@ -261,7 +251,6 @@ gateGo.addEventListener('click', ()=>{
   const email = document.getElementById('leadEmail').value.trim();
   const first = document.getElementById('leadFirst').value.trim();
   const phone = document.getElementById('leadPhone').value.trim();
-  // simulate send → stocke localement et log (tu remplaceras par webhook/CRM)
   localStorage.setItem('lead_email', email);
   localStorage.setItem('lead_first', first);
   localStorage.setItem('lead_phone', phone);
@@ -282,11 +271,7 @@ function validateGate(){
           && document.getElementById('consent').checked;
   gateGo.disabled = !ok;
 }
-
-function openGate(){
-  gateEl.classList.add('on');
-  validateGate();
-}
+function openGate(){ gateEl.classList.add('on'); validateGate(); }
 
 function appendMsg(text, who='bot'){
   const div = document.createElement('div');
@@ -295,7 +280,6 @@ function appendMsg(text, who='bot'){
   chatEl.appendChild(div);
   chatEl.scrollTop = chatEl.scrollHeight;
 }
-
 function startTalking(){
   avatarEl.classList.add('talking');
   clearTimeout(talkingTimer);
@@ -307,7 +291,7 @@ function stopTalking(){
   talkingTimer = null;
 }
 
-// TTS navigateur (fallback pour réponses chat)
+// TTS navigateur (fallback)
 function speak(text){
   try{
     const u = new SpeechSynthesisUtterance(text);
@@ -330,28 +314,21 @@ function playRoomAudio(roomId){
   return true;
 }
 
-// Entrée de pièce (appelée par Matterport ou par les tabs)
+// Entrée de pièce
 function enterRoom(roomId){
   if(!DATA.rooms[roomId]) return;
   const now = Date.now();
-  if(activeRoom===roomId && now - (lastPlayedAt[roomId]||0) < COOLDOWN_MS){
-    return; // évite relance si on se "recentre"
-  }
+  if(activeRoom===roomId && now - (lastPlayedAt[roomId]||0) < COOLDOWN_MS){ return; }
   activeRoom = roomId;
 
-  // Bandeau + transcript
   const text = DATA.rooms[roomId].narration;
   document.getElementById('narrText').textContent = text;
   appendMsg(text, 'bot');
 
-  // Audio: d'abord MP3 pré-généré si dispo, sinon TTS navigateur
-  if (!playRoomAudio(roomId)) {
-    speak(text);
-  }
+  if (!playRoomAudio(roomId)) speak(text);
 
   lastPlayedAt[roomId] = now;
 
-  // soft-gate : après le premier "wow" si pas encore montré
   if(!gateShown && !localStorage.getItem('lead_email')){
     setTimeout(()=>{ if(!gateShown) openGate(); }, 8000);
   }
@@ -361,16 +338,12 @@ function onSend(){
   const input = document.getElementById('question');
   const q = input.value.trim();
   if(!q) return;
-
-  // pause narration
   try { narrAudio.pause(); } catch(e){}
   speechSynthesis.cancel(); stopTalking();
 
   appendMsg(q, 'me');
   const reply = answerFromData(q);
   appendMsg(reply, 'bot');
-
-  // lis la réponse (fallback navigateur pour l'instant)
   speak(reply);
   input.value='';
 }
@@ -391,48 +364,49 @@ function answerFromData(q){
   const iframe = document.getElementById('mp');
   if (!iframe) return;
 
+  // IMPORTANT : init du mapping AVANT l'abonnement
+  window.SWEEP_TO_ROOM = {};
+
   let mpSdk;
-try {
-  // 1) d'abord en auto (sans version)
-  mpSdk = await window.MP_SDK.connect(iframe);
-  console.log("✅ SDK connecté (auto) !");
-} catch(e1){
-  console.warn("Connexion auto échouée, test des versions…");
-  const candidates = ['3.11','3.10','3.9','3.8','3.7','3.6'];
-  let lastError = e1;
-  for (const v of candidates) {
-    try {
-      mpSdk = await window.MP_SDK.connect(iframe, v);
-      console.log("✅ SDK connecté avec la version", v);
-      lastError = null;
-      break;
-    } catch (e) {
-      lastError = e;
+  try {
+    // 1) auto (sans version)
+    mpSdk = await window.MP_SDK.connect(iframe);
+    console.log("✅ SDK connecté (auto) !");
+  } catch(e1){
+    console.warn("Connexion auto échouée, test des versions…");
+    const candidates = ['3.11','3.10','3.9','3.8','3.7','3.6'];
+    let lastError = e1;
+    for (const v of candidates) {
+      try {
+        mpSdk = await window.MP_SDK.connect(iframe, v);
+        console.log("✅ SDK connecté avec la version", v);
+        lastError = null;
+        break;
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    if (!mpSdk) {
+      console.error("❌ Erreur SDK Matterport (toutes versions testées):", lastError);
+      return;
     }
   }
-  if (!mpSdk) {
-    console.error("❌ Erreur SDK Matterport (toutes versions testées):", lastError);
-    return;
-  }
-}
 
   // 1) TEMPORAIRE: log l'ID de chaque position (sweep) dans la console
   mpSdk.Sweep.current.subscribe((sweepId) => {
     console.log("Sweep actuel:", sweepId);
-    const room = SWEEP_TO_ROOM[sweepId];
+    const room = window.SWEEP_TO_ROOM[sweepId];
     if (room) enterRoom(room);
   });
 
-  // 2) ➜ APRÈS avoir noté les IDs dans la console,
-  //    remplis ce mapping: (exemples bidons; remplace par tes vrais IDs)
-  window.SWEEP_TO_ROOM = {
-    // "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": "salon",
-    // "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy": "cuisine",
-    // "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz": "chambre",
-    // tu peux mapper plusieurs sweeps vers la même pièce
-  };
+  // 2) ➜ Après avoir noté les IDs dans la console, remplis :
+  // window.SWEEP_TO_ROOM = {
+  //   "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": "salon",
+  //   "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy": "cuisine",
+  //   "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz": "chambre",
+  // };
 
-  // 3) (Optionnel) définir manuellement la première pièce (si tu veux afficher un texte immédiatement)
+  // 3) (Optionnel) forcer une première narration
   // enterRoom('salon');
 })();
 </script>
