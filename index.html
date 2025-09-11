@@ -11,7 +11,7 @@
 <style>
   :root{
     --bg:#f6f7fb; --card:#fff; --ink:#0f172a; --muted:#6b7280; --line:#e5e7eb;
-    --brand:#3b82f6; --brand-2:#2563eb; --chip:#eef2ff;
+    --brand:#3b82f6; --brand-2:#2563eb;
   }
   *{box-sizing:border-box} html,body{height:100%}
   body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto}
@@ -24,17 +24,16 @@
   /* Viewer */
   .viewer{position:relative;min-height:750px;background:#e6ecf3}
   .controls{position:absolute;left:16px;bottom:16px;display:flex;gap:10px;align-items:center}
-  .pill{background:rgba(255,255,255,.9);backdrop-filter:saturate(180%) blur(6px);border:1px solid var(--line);padding:8px 10px;border-radius:12px}
   .tabs{display:flex;gap:8px}
   .tab{padding:6px 10px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:14px;cursor:pointer}
   .tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
 
-  /* Bulle de parole (nouveau) */
+  /* Bulle de parole (remplace la barre du bas) */
   .speech{
     position:absolute;
-    right:120px;              /* décalage horizontal par rapport à l’avatar */
-    bottom:110px;             /* au-dessus de l’avatar */
-    max-width:260px;
+    right:120px;
+    bottom:110px;
+    max-width:280px;
     background:#fff;
     padding:10px 14px;
     border-radius:16px;
@@ -42,9 +41,9 @@
     box-shadow:0 6px 20px rgba(0,0,0,.12);
     font-size:14px;
     color:#111827;
-    opacity:0;                /* cachée par défaut */
-    pointer-events:none;      /* pas cliquable */
-    transition:opacity .2s ease;
+    opacity:0;               /* invisible par défaut */
+    pointer-events:none;
+    transition:opacity .25s ease;
   }
   .speech.on{ opacity:1; }
   .speech::after{
@@ -55,11 +54,11 @@
     border-width:10px;
     border-style:solid;
     border-color:#fff transparent transparent transparent;
-    filter: drop-shadow(0 -1px 0 rgba(0,0,0,.06));
+    filter: drop-shadow(0 -1px 0 rgba(0,0,0,.08));
   }
-  .narrText{ white-space:normal; line-height:1.3; }
+  .narrText{white-space:normal;line-height:1.3}
 
-  /* Avatar avec images (fermée / ouverte) */
+  /* Avatar */
   .avatar {
     position: absolute;
     right: 12px;
@@ -75,12 +74,7 @@
     box-shadow: 0 6px 20px rgba(0,0,0,.08);
     overflow: hidden;
   }
-  .face{
-    position:absolute; inset:0;
-    width:100%; height:100%;
-    object-fit:contain;
-    display:none;
-  }
+  .face{position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:none;}
   .face-closed{ display:block; }
   .avatar.talking .face-closed{ display:none; }
   .avatar.talking .face-open{ display:block; }
@@ -111,9 +105,9 @@
   .sheet .actions button{flex:1}
   .small{color:var(--muted);font-size:12px}
 
-  @media (max-width: 960px){
+  @media (max-width:960px){
     .viewer{min-height:600px}
-    .speech{ right:100px; bottom:100px; max-width: 220px; }
+    .speech{ right:96px; bottom:96px; max-width:220px; }
   }
 </style>
 </head>
@@ -126,9 +120,8 @@
       </div>
 
       <div class="body">
-        <!-- ================== VIEWER (Matterport) ================== -->
+        <!-- ================== VIEWER ================== -->
         <div class="viewer" id="viewer">
-          <!-- 1) Mets TON ID après m=  -->
           <iframe
             id="mp"
             src="https://my.matterport.com/show/?m=9gmG66cA2Sc&play=1&qs=1&brand=0&dh=1&sdk=1"
@@ -136,8 +129,8 @@
             style="position:absolute; inset:0; width:100%; height:100%; border:0;"
           ></iframe>
 
-          <!-- Mini contrôles -->
-          <div class="controls pill">
+          <!-- Contrôles -->
+          <div class="controls">
             <div class="tabs">
               <button class="tab" data-room="salon">Salon</button>
               <button class="tab" data-room="cuisine">Cuisine</button>
@@ -150,13 +143,12 @@
             <div id="narrText" class="narrText">—</div>
           </div>
 
-          <!-- AVATAR (2 images, fermé/ouvert) -->
+          <!-- AVATAR -->
           <div class="avatar" id="avatar">
             <img class="face face-closed" src="avatar-closed.png" alt="Assistant IA" />
             <img class="face face-open"   src="avatar-open.png"   alt="" />
           </div>
-
-        </div> <!-- 👈 FIN du .viewer -->
+        </div>
 
         <!-- ================== CHAT ================== -->
         <div class="side">
@@ -251,17 +243,17 @@ let speechHideTimer = null;
 document.getElementById('title').textContent = DATA.titre;
 document.getElementById('price').textContent = DATA.prix.toLocaleString('fr-FR') + " €";
 
-// tabs (manuels, utiles pour tester sans Matterport)
+// Onglets
 document.querySelectorAll('.tab').forEach(btn=>{
   btn.addEventListener('click', ()=> enterRoom(btn.dataset.room));
 });
 
-// chat open triggers soft-gate (une fois)
+// Ouvrir chat → soft-gate une fois
 document.getElementById('openChat').addEventListener('click', ()=>{
   if (!gateShown && !localStorage.getItem('lead_email')) openGate();
 });
 
-// send question
+// Envoi question
 document.getElementById('send').addEventListener('click', onSend);
 document.getElementById('question').addEventListener('keydown',(e)=>{
   if(e.key==='Enter') onSend();
@@ -367,7 +359,7 @@ function speak(text){
   }catch(e){}
 }
 
-// Lecture d'un MP3 (pour narrations pré-générées) + cache-bust
+// Lecture d'un MP3 (pré-généré) + cache-bust
 function playRoomAudio(roomId){
   const src = DATA.rooms[roomId].audio;
   if (!src) return false;
@@ -483,13 +475,14 @@ function answerFromData(q){
     }
   }
 
+  // Log du sweep courant (pour futur mapping auto)
   mpSdk.Sweep.current.subscribe((sweepId) => {
     console.log("Sweep actuel:", sweepId);
     const room = window.SWEEP_TO_ROOM[sweepId];
     if (room) enterRoom(room);
   });
 
-  // enterRoom('salon'); // 👉 tu peux décommenter pour démarrer direct après chargement
+  // enterRoom('salon'); // 👉 décommente si tu veux démarrer direct après chargement
 })();
 
 // Pause auto si l’onglet n’est plus visible
