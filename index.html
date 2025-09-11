@@ -215,12 +215,12 @@ const avatarEl   = document.getElementById('avatar');
 const narrTextEl = document.getElementById('narrText');
 const chatEl     = document.getElementById('chat');
 const narrAudio  = document.getElementById('narrAudio');
-// --- Animation de la bouche (clignotement) ---
+  // === Avatar: éléments & état (sécurisés)
+const faceClosedEl = document.querySelector('.face.face-closed');
+const faceOpenEl   = document.querySelector('.face.face-open');
+
 let mouthTimer = null;
 let mouthOpen  = false;
-const faceClosedEl = document.querySelector('.face-closed');
-const faceOpenEl   = document.querySelector('.face-open');
-
 /* ===================== 3) INIT UI ===================== */
 document.getElementById('title').textContent = DATA.titre;
 document.getElementById('price').textContent = DATA.prix.toLocaleString('fr-FR') + " €";
