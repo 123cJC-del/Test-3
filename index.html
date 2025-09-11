@@ -364,12 +364,29 @@ function answerFromData(q){
   if (!iframe) return;
 
   let mpSdk;
-  try {
-    mpSdk =  await window.MP_SDK.connect(iframe);
-  } catch(e){
-    console.error("Erreur SDK Matterport:", e);
+try {
+  // 1) d'abord en auto (sans version)
+  mpSdk = await window.MP_SDK.connect(iframe);
+  console.log("✅ SDK connecté (auto) !");
+} catch(e1){
+  console.warn("Connexion auto échouée, test des versions…");
+  const candidates = ['3.11','3.10','3.9','3.8','3.7','3.6'];
+  let lastError = e1;
+  for (const v of candidates) {
+    try {
+      mpSdk = await window.MP_SDK.connect(iframe, v);
+      console.log("✅ SDK connecté avec la version", v);
+      lastError = null;
+      break;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  if (!mpSdk) {
+    console.error("❌ Erreur SDK Matterport (toutes versions testées):", lastError);
     return;
   }
+}
 
   // 1) TEMPORAIRE: log l'ID de chaque position (sweep) dans la console
   mpSdk.Sweep.current.subscribe((sweepId) => {
