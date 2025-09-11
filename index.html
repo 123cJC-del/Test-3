@@ -365,7 +365,7 @@ function answerFromData(q){
 
   let mpSdk;
   try {
-    mpSdk = await window.MP_SDK.connect(iframe, '3.09');
+    mpSdk = await window.MP_SDK.connect(iframe, '3.10');
   } catch(e){
     console.error("Erreur SDK Matterport:", e);
     return;
